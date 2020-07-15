@@ -26,18 +26,19 @@ import os
 import subprocess
 import sys
 from time import sleep
-import urllib
-import urllib2
+import urllib.request, urllib.parse, urllib.error
 
 # Parse the command line arguments
-arg_parser = argparse.ArgumentParser(description='Translates QR codes detected by a camera into Sonos commands.')
-arg_parser.add_argument('--default-device', default='Wohnzimmer', help='the name of your default device/room')
+arg_parser = argparse.ArgumentParser(
+    description='Translates QR codes detected by a camera into Sonos commands.',
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter
+)
+arg_parser.add_argument('--default-device', default='Spielzimmer', help='the name of your default device/room')
 arg_parser.add_argument('--linein-source', default='Wohnzimmer', help='the name of the device/room used as the line-in source')
 arg_parser.add_argument('--hostname', default='localhost', help='the hostname or IP address of the machine running `node-sonos-http-api`')
 arg_parser.add_argument('--skip-load', default='true', action='store_true', help='skip loading of the music library (useful if the server has already loaded it)')
 arg_parser.add_argument('--debug-file', help='read commands from a file instead of launching scanner')
 args = arg_parser.parse_args()
-print args
 
 
 base_url = 'http://' + args.hostname + ':5005'
@@ -46,10 +47,10 @@ base_url = 'http://' + args.hostname + ':5005'
 try:
     with open('.last-device', 'r') as device_file:
         current_device = device_file.read().replace('\n', '')
-        print('Defaulting to last used room: ' + current_device)
+        print(('Defaulting to last used room: ' + current_device))
 except:
     current_device = args.default_device
-    print('Initial room: ' + current_device)
+    print(('Initial room: ' + current_device))
 
 # Keep track of the last-seen code
 last_qrcode = ''
@@ -65,7 +66,7 @@ current_mode = Mode.PLAY_SONG_IMMEDIATELY
 
 def perform_request(url):
     print(url)
-    response = urllib2.urlopen(url)
+    response = urllib.request.urlopen(url)
     result = response.read()
     print(result)
 
@@ -75,7 +76,7 @@ def perform_global_request(path):
 
 
 def perform_room_request(path):
-    qdevice = urllib.quote(current_device)
+    qdevice = urllib.parse.quote(current_device)
     perform_request(base_url + '/' + qdevice + '/' + path)
 
 
@@ -89,8 +90,8 @@ def switch_to_room(room):
 
 
 def speak(phrase):
-    print('SPEAKING: \'{0}\''.format(phrase))
-    perform_room_request('say/' + urllib.quote(phrase))
+    print(('SPEAKING: \'{0}\''.format(phrase)))
+    perform_room_request('say/' + urllib.parse.quote(phrase))
 
 
 # Causes the onboard green LED to blink on and off twice.  (This assumes Raspberry Pi 3 Model B; your
@@ -119,7 +120,7 @@ def blink_led():
 def handle_command(qrcode):
     global current_mode
 
-    print('HANDLING COMMAND: ' + qrcode)
+    print(('HANDLING COMMAND: ' + qrcode))
 
     phrase = None
     if qrcode == 'cmd:playpause':
@@ -129,13 +130,13 @@ def handle_command(qrcode):
     elif qrcode == 'cmd:pause':
         perform_room_request('pause')
     elif qrcode == 'cmd:louder':
-        perform_room_request('+5')
+        perform_room_request('volume/+5')
     elif qrcode == 'cmd:quieter':
-        perform_room_request('-5')
+        perform_room_request('volume/-5')
     elif qrcode == 'cmd:next':
         perform_room_request('next')
     elif qrcode == 'cmd:turntable':
-        perform_room_request('linein/' + urllib.quote(args.linein_source))
+        perform_room_request('linein/' + urllib.parse.quote(args.linein_source))
         perform_room_request('play')
         phrase = 'I\'ve activated the turntable'
     elif qrcode == 'cmd:livingroom':
@@ -169,7 +170,7 @@ def handle_library_item(uri):
     if not uri.startswith('lib:'):
         return
 
-    print('PLAYING FROM LIBRARY: ' + uri)
+    print(('PLAYING FROM LIBRARY: ' + uri))
 
     if current_mode == Mode.BUILD_QUEUE:
         action = 'queuesongfromhash'
@@ -182,7 +183,7 @@ def handle_library_item(uri):
 
 
 def handle_spotify_item(uri):
-    print('PLAYING FROM SPOTIFY: ' + uri)
+    print(('PLAYING FROM SPOTIFY: ' + uri))
 
     if current_mode == Mode.BUILD_QUEUE:
         action = 'queue'
@@ -200,10 +201,10 @@ def handle_qrcode(qrcode):
     # Ignore redundant codes, except for commands like "whatsong", where you might
     # want to perform it multiple times
     if qrcode == last_qrcode and not qrcode.startswith('cmd:'):
-        print('IGNORING REDUNDANT QRCODE: ' + qrcode)
+        print(('IGNORING REDUNDANT QRCODE: ' + qrcode))
         return
 
-    print('HANDLING QRCODE: ' + qrcode)
+    print(('HANDLING QRCODE: ' + qrcode))
 
     if qrcode.startswith('cmd:'):
         handle_command(qrcode)

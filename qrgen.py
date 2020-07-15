@@ -30,8 +30,7 @@ from spotipy.oauth2 import SpotifyClientCredentials
 import spotipy.util as util
 import subprocess
 import sys
-import urllib
-import urllib2
+import urllib.request, urllib.parse, urllib.error
 
 # Build a map of the known commands
 # TODO: Might be better to specify these in the input file to allow for more customization
@@ -53,14 +52,16 @@ commands = {
 }
 
 # Parse the command line arguments
-arg_parser = argparse.ArgumentParser(description='Generates an HTML page containing cards with embedded QR codes that can be interpreted by `qrplay`.')
+arg_parser = argparse.ArgumentParser(
+    description='Generates an HTML page containing cards with embedded QR codes that can be interpreted by `qrplay`.',
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter
+)
 arg_parser.add_argument('--input', help='the file containing the list of commands and songs to generate')
 arg_parser.add_argument('--generate-images', action='store_true', help='generate an individual PNG image for each card')
 arg_parser.add_argument('--list-library', action='store_true', help='list all available library tracks')
 arg_parser.add_argument('--hostname', default='localhost', help='the hostname or IP address of the machine running `node-sonos-http-api`')
 arg_parser.add_argument('--spotify-username', help='the username used to set up Spotify access (only needed if you want to generate cards for Spotify tracks)')
 args = arg_parser.parse_args()
-print args
 
 base_url = 'http://' + args.hostname + ':5005'
 
@@ -74,7 +75,7 @@ else:
 
 def perform_request(url):
     print(url)
-    response = urllib2.urlopen(url)
+    response = urllib.request.urlopen(url)
     result = response.read()
     return result
 
@@ -107,10 +108,10 @@ def process_command(uri, index):
     artout = 'out/{0}art.jpg'.format(index)
 
     # Create a QR code from the command URI
-    print subprocess.check_output(['qrencode', '-o', qrout, uri])
+    print((subprocess.check_output(['qrencode', '-o', qrout, uri])))
 
     # Fetch the artwork and save to the output directory
-    print subprocess.check_output(['curl', arturl, '-o', artout])
+    print((subprocess.check_output(['curl', arturl, '-o', artout])))
 
     return (cmdname, None, None)
 
@@ -137,10 +138,10 @@ def process_spotify_track(uri, index):
     artout = 'out/{0}art.jpg'.format(index)
 
     # Create a QR code from the track URI
-    print subprocess.check_output(['qrencode', '-o', qrout, uri])
+    print((subprocess.check_output(['qrencode', '-o', qrout, uri])))
 
     # Fetch the artwork and save to the output directory
-    print subprocess.check_output(['curl', arturl, '-o', artout])
+    print((subprocess.check_output(['curl', arturl, '-o', artout])))
 
     return (song.encode('utf-8'), album.encode('utf-8'), artist.encode('utf-8'))
 
@@ -169,10 +170,10 @@ def process_spotify_album(uri, index):
     artout = 'out/{0}art.jpg'.format(index)
 
     # Create a QR code from the track URI
-    print subprocess.check_output(['qrencode', '-o', qrout, uri])
+    print((subprocess.check_output(['qrencode', '-o', qrout, uri])))
 
     # Fetch the artwork and save to the output directory
-    print subprocess.check_output(['curl', arturl, '-o', artout])
+    print((subprocess.check_output(['curl', arturl, '-o', artout])))
 
     return (song.encode('utf-8'), album, artist.encode('utf-8'))
 
@@ -192,10 +193,10 @@ def process_spotify_playlist(uri, index):
     artout = 'out/{0}art.jpg'.format(index)
 
     # Create a QR code from the track URI
-    print subprocess.check_output(['qrencode', '-o', qrout, uri])
+    print((subprocess.check_output(['qrencode', '-o', qrout, uri])))
 
     # Fetch the artwork and save to the output directory
-    print subprocess.check_output(['curl', arturl, '-o', artout])
+    print((subprocess.check_output(['curl', arturl, '-o', artout])))
 
     return (song.encode('utf-8'), album, artist.encode('utf-8'))
 
@@ -215,7 +216,7 @@ def process_library_track(uri, index):
     # the "The").  As a dumb hack (to preserve the "The") we can look at the raw URI for the
     # track (this assumes an iTunes-style directory structure), parse out the artist directory
     # name and see if it starts with "The".
-    from urlparse import urlparse
+    from urllib.parse import urlparse
     uri_parts = urlparse(track['uri'])
     uri_path = uri_parts.path
     print(uri_path)
@@ -230,10 +231,10 @@ def process_library_track(uri, index):
     artout = 'out/{0}art.jpg'.format(index)
 
     # Create a QR code from the track URI
-    print subprocess.check_output(['qrencode', '-o', qrout, uri])
+    print((subprocess.check_output(['qrencode', '-o', qrout, uri])))
 
     # Fetch the artwork and save to the output directory
-    print subprocess.check_output(['curl', arturl, '-o', artout])
+    print((subprocess.check_output(['curl', arturl, '-o', artout])))
 
     return (song.encode('utf-8'), album.encode('utf-8'), artist.encode('utf-8'))
 
@@ -280,7 +281,7 @@ def generate_individual_card_image(index, artist, album, song):
     # Then convert the HTML to a PNG image (beware the hardcoded values; these need to align
     # with the dimensions in `cards.css`)
     png_filename = 'out/{0}'.format(index)
-    print subprocess.check_output(['webkit2png', html_filename, '--scale=1.0', '--clipped', '--clipwidth=720', '--clipheight=640', '-o', png_filename])
+    print((subprocess.check_output(['webkit2png', html_filename, '--scale=1.0', '--clipped', '--clipwidth=720', '--clipheight=640', '-o', png_filename])))
 
     # Rename the file to remove the extra `-clipped` suffix that `webkit2png` includes by default
     os.rename(png_filename + '-clipped.png', png_filename + 'card.png')
@@ -337,7 +338,7 @@ def generate_cards():
         elif line.startswith('lib:'):
             (song, album, artist) = process_library_track(line, index)
         else:
-            print('Failed to handle URI: ' + line)
+            print(('Failed to handle URI: ' + line))
             exit(1)
 
         # Append the HTML for this card
