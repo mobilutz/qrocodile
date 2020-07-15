@@ -31,10 +31,10 @@ import urllib2
 
 # Parse the command line arguments
 arg_parser = argparse.ArgumentParser(description='Translates QR codes detected by a camera into Sonos commands.')
-arg_parser.add_argument('--default-device', default='Dining Room', help='the name of your default device/room')
-arg_parser.add_argument('--linein-source', default='Dining Room', help='the name of the device/room used as the line-in source')
+arg_parser.add_argument('--default-device', default='Wohnzimmer', help='the name of your default device/room')
+arg_parser.add_argument('--linein-source', default='Wohnzimmer', help='the name of the device/room used as the line-in source')
 arg_parser.add_argument('--hostname', default='localhost', help='the hostname or IP address of the machine running `node-sonos-http-api`')
-arg_parser.add_argument('--skip-load', action='store_true', help='skip loading of the music library (useful if the server has already loaded it)')
+arg_parser.add_argument('--skip-load', default='true', action='store_true', help='skip loading of the music library (useful if the server has already loaded it)')
 arg_parser.add_argument('--debug-file', help='read commands from a file instead of launching scanner')
 args = arg_parser.parse_args()
 print args
@@ -121,12 +121,19 @@ def handle_command(qrcode):
 
     print('HANDLING COMMAND: ' + qrcode)
 
+    phrase = None
     if qrcode == 'cmd:playpause':
         perform_room_request('playpause')
-        phrase = None
+    elif qrcode == 'cmd:play':
+        perform_room_request('play')
+    elif qrcode == 'cmd:pause':
+        perform_room_request('pause')
+    elif qrcode == 'cmd:louder':
+        perform_room_request('+5')
+    elif qrcode == 'cmd:quieter':
+        perform_room_request('-5')
     elif qrcode == 'cmd:next':
         perform_room_request('next')
-        phrase = None
     elif qrcode == 'cmd:turntable':
         perform_room_request('linein/' + urllib.quote(args.linein_source))
         perform_room_request('play')
@@ -145,15 +152,12 @@ def handle_command(qrcode):
         phrase = 'Show me a card and I\'ll play the whole album'
     elif qrcode == 'cmd:buildqueue':
         current_mode = Mode.BUILD_QUEUE
-        #perform_room_request('pause')
         perform_room_request('clearqueue')
         phrase = 'Let\'s build a list of songs'
     elif qrcode == 'cmd:whatsong':
         perform_room_request('saysong')
-        phrase = None
     elif qrcode == 'cmd:whatnext':
         perform_room_request('saynext')
-        phrase = None
     else:
         phrase = 'Hmm, I don\'t recognize that command'
 
@@ -213,7 +217,7 @@ def handle_qrcode(qrcode):
     # when adding songs to the queue)
     if not args.debug_file:
         blink_led()
-        
+
     last_qrcode = qrcode
 
 
@@ -261,7 +265,7 @@ if args.debug_file:
     read_debug_script()
 else:
     # Start the QR code reader
-    p = os.popen('/usr/bin/zbarcam --prescale=300x200', 'r')
+    p = os.popen('/usr/bin/zbarcam --nodisplay --prescale=300x200', 'r')
     try:
         start_scan()
     except KeyboardInterrupt:

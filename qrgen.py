@@ -26,6 +26,7 @@ import json
 import os.path
 import shutil
 import spotipy
+from spotipy.oauth2 import SpotifyClientCredentials
 import spotipy.util as util
 import subprocess
 import sys
@@ -37,15 +38,18 @@ import urllib2
 # (instead of hardcoding names/images here)
 commands = {
   'cmd:playpause': ('Play / Pause', 'https://raw.githubusercontent.com/google/material-design-icons/master/av/drawable-xxxhdpi/ic_pause_circle_outline_black_48dp.png'),
-  'cmd:next': ('Skip to Next Song', 'https://raw.githubusercontent.com/google/material-design-icons/master/av/drawable-xxxhdpi/ic_skip_next_black_48dp.png'),
-  'cmd:turntable': ('Turntable', 'http://moziru.com/images/record-player-clipart-vector-3.jpg'),
-  'cmd:livingroom': ('Living Room', 'http://icons.iconarchive.com/icons/icons8/ios7/512/Household-Livingroom-icon.png'),
-  'cmd:diningandkitchen': ('Dining Room / Kitchen', 'https://png.icons8.com/ios/540//dining-room.png'),
-  'cmd:songonly': ('Play the Song Only', 'https://raw.githubusercontent.com/google/material-design-icons/master/image/drawable-xxxhdpi/ic_audiotrack_black_48dp.png'),
-  'cmd:wholealbum': ('Play the Whole Album', 'https://raw.githubusercontent.com/google/material-design-icons/master/av/drawable-xxxhdpi/ic_album_black_48dp.png'),
-  'cmd:buildqueue': ('Build List of Songs', 'https://raw.githubusercontent.com/google/material-design-icons/master/av/drawable-xxxhdpi/ic_playlist_add_black_48dp.png'),
-  'cmd:whatsong': ('What\'s Playing?', 'https://raw.githubusercontent.com/google/material-design-icons/master/action/drawable-xxxhdpi/ic_help_outline_black_48dp.png'),
-  'cmd:whatnext': ('What\'s Next?', 'https://raw.githubusercontent.com/google/material-design-icons/master/action/drawable-xxxhdpi/ic_help_outline_black_48dp.png')
+  'cmd:play': ('Play', 'https://raw.githubusercontent.com/google/material-design-icons/master/av/drawable-xxxhdpi/ic_play_circle_outline_black_48dp.png'),
+  'cmd:pause': ('Pause', 'https://raw.githubusercontent.com/google/material-design-icons/master/av/drawable-xxxhdpi/ic_pause_circle_outline_black_48dp.png'),
+  'cmd:next': ('N&auml;chster Song', 'https://raw.githubusercontent.com/google/material-design-icons/master/av/drawable-xxxhdpi/ic_skip_next_black_48dp.png'),
+  'cmd:livingroom': ('Wohnzimmer', 'http://icons.iconarchive.com/icons/icons8/ios7/512/Household-Livingroom-icon.png'),
+  'cmd:songonly': ('Nur diesen Song', 'https://raw.githubusercontent.com/google/material-design-icons/master/image/drawable-xxxhdpi/ic_audiotrack_black_48dp.png'),
+  'cmd:wholealbum': ('Ganzes Album abspielen', 'https://raw.githubusercontent.com/google/material-design-icons/master/av/drawable-xxxhdpi/ic_album_black_48dp.png'),
+  'cmd:buildqueue': ('Songliste erstellen', 'https://raw.githubusercontent.com/google/material-design-icons/master/av/drawable-xxxhdpi/ic_playlist_add_black_48dp.png'),
+  'cmd:whatsong': ('Was spielt gerade?', 'https://raw.githubusercontent.com/google/material-design-icons/master/action/drawable-xxxhdpi/ic_help_outline_black_48dp.png'),
+  'cmd:whatnext': ('Was kommt als n&auml;chstes?', 'https://raw.githubusercontent.com/google/material-design-icons/master/action/drawable-xxxhdpi/ic_help_outline_black_48dp.png'),
+  'cmd:quieter': ('Leiser', 'https://raw.githubusercontent.com/google/material-design-icons/master/av/drawable-xxxhdpi/ic_volume_down_black_48dp.png'),
+  'cmd:louder': ('Lauter', 'https://raw.githubusercontent.com/google/material-design-icons/master/av/drawable-xxxhdpi/ic_volume_up_black_48dp.png'),
+  'cmd:shuffle': ('Zufall', 'https://raw.githubusercontent.com/google/material-design-icons/master/av/drawable-xxxhdpi/ic_volume_up_black_48dp.png')
 }
 
 # Parse the command line arguments
@@ -62,12 +66,7 @@ base_url = 'http://' + args.hostname + ':5005'
 
 if args.spotify_username:
     # Set up Spotify access (comment this out if you don't want to generate cards for Spotify tracks)
-    scope = 'user-library-read'
-    token = util.prompt_for_user_token(args.spotify_username, scope)
-    if token:
-        sp = spotipy.Spotify(auth=token)
-    else:
-        raise ValueError('Can\'t get Spotify token for ' + username)
+    sp = spotipy.Spotify(client_credentials_manager=SpotifyClientCredentials())
 else:
     # No Spotify
     sp = None
@@ -102,11 +101,11 @@ def strip_title_junk(title):
 
 def process_command(uri, index):
     (cmdname, arturl) = commands[uri]
-    
+
     # Determine the output image file names
     qrout = 'out/{0}qr.png'.format(index)
     artout = 'out/{0}art.jpg'.format(index)
-    
+
     # Create a QR code from the command URI
     print subprocess.check_output(['qrencode', '-o', qrout, uri])
 
@@ -114,29 +113,29 @@ def process_command(uri, index):
     print subprocess.check_output(['curl', arturl, '-o', artout])
 
     return (cmdname, None, None)
-    
-    
+
+
 def process_spotify_track(uri, index):
     if not sp:
         raise ValueError('Must configure Spotify API access first using `--spotify-username`')
 
     track = sp.track(uri)
 
-    print track
+    # print track
     # print 'track    : ' + track['name']
     # print 'artist   : ' + track['artists'][0]['name']
     # print 'album    : ' + track['album']['name']
     # print 'cover art: ' + track['album']['images'][0]['url']
-    
+
     song = strip_title_junk(track['name'])
     artist = strip_title_junk(track['artists'][0]['name'])
     album = strip_title_junk(track['album']['name'])
     arturl = track['album']['images'][0]['url']
-    
+
     # Determine the output image file names
     qrout = 'out/{0}qr.png'.format(index)
     artout = 'out/{0}art.jpg'.format(index)
-    
+
     # Create a QR code from the track URI
     print subprocess.check_output(['qrencode', '-o', qrout, uri])
 
@@ -146,10 +145,65 @@ def process_spotify_track(uri, index):
     return (song.encode('utf-8'), album.encode('utf-8'), artist.encode('utf-8'))
 
 
+def process_spotify_album(uri, index):
+    if not sp:
+        raise ValueError('Must configure Spotify API access first using `--spotify-username`')
+
+    # print uri
+    album_raw = sp.album(uri)
+
+    # print album_raw
+
+    song = strip_title_junk(album_raw['name'])
+    artist = strip_title_junk(album_raw['artists'][0]['name'])
+    album = None
+    arturl = album_raw['images'][0]['url']
+
+    # print 'track    : ' + song
+    # print 'artist   : ' + artist
+    # print 'album    : ' + album
+    # print 'cover art: ' + arturl
+
+    # Determine the output image file names
+    qrout = 'out/{0}qr.png'.format(index)
+    artout = 'out/{0}art.jpg'.format(index)
+
+    # Create a QR code from the track URI
+    print subprocess.check_output(['qrencode', '-o', qrout, uri])
+
+    # Fetch the artwork and save to the output directory
+    print subprocess.check_output(['curl', arturl, '-o', artout])
+
+    return (song.encode('utf-8'), album, artist.encode('utf-8'))
+
+
+def process_spotify_playlist(uri, index):
+    if not sp:
+        raise ValueError('Must configure Spotify API access first using `--spotify-username`')
+
+    playlist_raw = sp.playlist(uri)
+    song = strip_title_junk(playlist_raw['name'])
+    artist = strip_title_junk(playlist_raw['owner']['display_name'])
+    album = None
+    arturl = playlist_raw['images'][0]['url']
+
+    # Determine the output image file names
+    qrout = 'out/{0}qr.png'.format(index)
+    artout = 'out/{0}art.jpg'.format(index)
+
+    # Create a QR code from the track URI
+    print subprocess.check_output(['qrencode', '-o', qrout, uri])
+
+    # Fetch the artwork and save to the output directory
+    print subprocess.check_output(['curl', arturl, '-o', artout])
+
+    return (song.encode('utf-8'), album, artist.encode('utf-8'))
+
+
 def process_library_track(uri, index):
     track_json = perform_request(base_url + '/musicsearch/library/metadata/' + uri)
     track = json.loads(track_json)
-    print(track)
+    # print track
 
     song = strip_title_junk(track['trackName'])
     artist = strip_title_junk(track['artistName'])
@@ -195,9 +249,9 @@ def card_content_html(index, artist, album, song):
     html += '  <div class="labels">\n'
     html += '    <p class="song">{0}</p>\n'.format(song)
     if artist:
-        html += '    <p class="artist"><span class="small">by</span> {0}</p>\n'.format(artist)
+        html += '    <p class="artist"><span class="small">von</span> {0}</p>\n'.format(artist)
     if album:
-        html += '    <p class="album"><span class="small">from</span> {0}</p>\n'.format(album)
+        html += '    <p class="album"><span class="small">auf</span> {0}</p>\n'.format(album)
     html += '  </div>\n'
     return html
 
@@ -274,8 +328,12 @@ def generate_cards():
 
         if line.startswith('cmd:'):
             (song, album, artist) = process_command(line, index)
-        elif line.startswith('spotify:'):
+        elif line.startswith('spotify:track:'):
             (song, album, artist) = process_spotify_track(line, index)
+        elif line.startswith('spotify:album:'):
+            (song, album, artist) = process_spotify_album(line, index)
+        elif line.startswith('spotify:playlist:'):
+            (song, album, artist) = process_spotify_playlist(line, index)
         elif line.startswith('lib:'):
             (song, album, artist) = process_library_track(line, index)
         else:
